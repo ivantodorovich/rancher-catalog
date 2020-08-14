@@ -1,14 +1,17 @@
 .catalog:
-  name: "Adhoc Traefik Global Con Consul"
-  version: "1.7.24"
-  description: "(Experimental) Traefik load balancer."
+  name: "Adhoc Traefik Global con Redis"
+  version: "2.2.8"
+  description: "Traefik Load Balancer."
   minimum_rancher_version: v1.3.2
   questions:
 
-    - variable: "auth_users"
-      label: "Traefik administration Users."
-      description: "CSV format: User:Hash,User:Hash. Administration panel is on tr.{domain}. You can generate in here https://www.web2generators.com/apache-tools/htpasswd-generator"
+    # Configuration
+
+    - variable: "domain"
+      description: "Can be overridden by setting the 'traefik.domain' label on an service."
+      label: "Default domain used:"
       required: true
+      default: "example.com"
       type: "string"
 
     - variable: "http_port"
@@ -25,26 +28,6 @@
       default: 443
       type: "int"
 
-    - variable: "admin_port"
-      description: "Traefik admin public port to listen."
-      label: "Admin port:"
-      required: true
-      default: 8000
-      type: "int"
-
-    - variable: "domain"
-      description: "Can be overridden by setting the 'traefik.domain' label on an service."
-      label: "Default domain used:"
-      required: true
-      default: "rancher.localhost"
-      type: "string"
-
-    - variable: "ConsulEndpoint"
-      label: "Consul Endpoint:"
-      required: true
-      default: "adhoc-consul-consul-1:8500"
-      type: "string"
-
     - variable: "EnableServiceHealthFilter"
       label: "Enable Service Health Filter:"
       required: false
@@ -52,79 +35,48 @@
       default: true
       type: "boolean"
 
-    - variable: "host_label"
-      description: "Host label where to run traefik service."
-      label: "Host label:"
+    # Administration Panel
+
+    - variable: "admin_domain"
+      description: "Domain for the administration panel"
+      label: "Treafik Administration Domain:"
       required: true
-      default: "traefik_lb=true"
+      default: "tr.example.com"
       type: "string"
 
-    # TODO enable this
-    # - variable: "RefreshSeconds"
-    #   label: "Polling interval (in seconds):"
-    #   required: true
-    #   default: 15
-    #   type: "int"
+    - variable: "auth_users"
+      label: "Traefik Administration Users:"
+      description: "CSV format: User:Hash,User:Hash. Administration panel is on tr.{domain}. You can generate in here https://www.web2generators.com/apache-tools/htpasswd-generator"
+      required: false
+      type: "string"
 
-    # - variable: "ExposedByDefault"
-    #   description: "Expose Rancher services by default in traefik."
-    #   label: "Expose by Default:"
-    #   required: false
-    #   default: false
-    #   type: "boolean"
+      # Configuration Storage
 
-    # - variable: "EnableServiceHealthFilter"
-    #   description: "Filter services with unhealthy states and health states."
-    #   label: "Enable Service Health Filter:"
-    #   required: false
-    #   default: false
-    #   type: "boolean"
+    - variable: "ConsulEndpoint"
+      label: "Consul Endpoint:"
+      required: false
+      default: "consul.infra-consul:8500"
+      type: "string"
 
-    # por ahora no es opcional, es obligatorio
-    # - variable: "https_enable"
-    #   label: "Enable HTTPS:"
-    #   description: |
-    #     Enable https working mode. If you activate, you need to fill SSL key and SSL crt in order to work.
-    #   default: false
-    #   required: false
-    #   type: "boolean"
+    - variable: "RedisEndpoint"
+      label: "Redis Endpoint:"
+      required: false
+      default: "redis.infra-redis:6379"
+      type: "string"
 
-    # TODO implementar, por ahora las ponemos a mano
-    # - variable: "ssl_key"
-    #   description: "SSL key to secure the service. *Required if you enable https"
-    #   label: "SSL key"
-    #   type: "multiline"
-    #   required: false
-    #   default: ""
+    - variable: "RedisPassword"
+      label: "Redis Password:"
+      required: false
+      type: "string"
 
-    # - variable: "ssl_crt"
-    #   description: "SSL cert to secure the service. *Required if you enable https"
-    #   label: "SSL crt"
-    #   type: "multiline"
-    #   required: false
-    #   default: ""
+      # Certificate Resolvers
 
-    # COMO ahora va todo como un command se hace mas dificil activar / desactivar
-    # - variable: "acme_enable"
-    #   description: "Enable acme support on traefik."
-    #   label: "Enable ACME:"
-    #   required: true
-    #   default: false
-    #   type: "boolean"
-
-    - variable: "acme_http_challenge"
-      label: "Enable HTTP Challenge Over http"
+    - variable: "acme_email"
+      description: "ACME user email."
+      label: "ACME email:"
       required: true
-      default: false
-      type: "boolean"
-
-    - variable: "acme_dns_challenge"
-      label: "Enable DNS Challenge"
-      type: enum
-      options:
-        - gcloud
-        - route53
-        - cloudflare
+      default: "test@traefik.io"
+      type: "string"
 
     - variable: "acme_dns_challenge_GCE_PROJECT"
       label: "Gcloud DNS challenge GCE_PROJECT"
@@ -142,23 +94,19 @@
       label: "Cloudflare DNS challenge CF_API_EMAIL"
       type: "string"
 
-    - variable: "acme_email"
-      description: "ACME user email."
-      label: "ACME email:"
-      required: true
-      default: "test@traefik.io"
-      type: "string"
+      # Rancher
 
-    - variable: "acme_onhostrule"
-      description: "Enable acme onHostRule."
-      label: "ACME onHostRule:"
+    - variable: "host_label"
+      description: "Host label where to run traefik service."
+      label: "Host label:"
       required: true
-      default: true
-      type: "boolean"
+      default: "traefik_lb=true"
+      type: "string"
 
 #
 # Scaling and health checks per service as per docker-compose.yml
 #
+
 version: 2
 services:
   traefik:
@@ -170,12 +118,3 @@ services:
       request_line: 'GET /dashboard/# HTTP/1.0'
       healthy_threshold: 2
       response_timeout: 5000
-# esto podria llegar a usarse para que con algun curl o algo, en entrypoint
-# o algo asi, desde el metadata generemos los archivos
-# lo hacen con algo de aca https://github.com/rawmind0/rancher-traefik/blob/master/root/opt/tools/confd/etc/conf.d/traefik.key.toml
-  # metadata:
-  #   traefik:
-  #     ssl_key: |
-  #       ${ssl_key}
-  #     ssl_crt: |
-  #       ${ssl_crt}
